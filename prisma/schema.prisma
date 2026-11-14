@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Účet studenta. Skupiny se do první verze nezapisují.
+model User {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  passwordHash    String
+  emailVerifiedAt DateTime?
+  createdAt       DateTime     @default(now())
+  sessions        Session[]
+  tokens          EmailToken[]
+  folders         Folder[]
+  materials       Material[]
+  attempts        Attempt[]
+  studySessions   StudySession[]
+  images          ImageAsset[]
+  drafts          QuizDraft[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  userAgent  String   @default("")
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model EmailToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Folder {
+  id        String     @id @default(cuid())
+  ownerId   String
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Folder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Folder[]   @relation("FolderTree")
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  materials Material[]
+
+  @@index([ownerId, parentId])
+}
+
+/// Studijní položka. listedInLibrary je připravené na pozdější veřejnou knihovnu a v první verzi zůstává false.
+model Material {
+  id              String   @id @default(cuid())
+  ownerId         String
+  owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folderId        String?
+  folder          Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  type            String
+  title           String
+  shareToken      String?  @unique
+  shareEnabled    Boolean  @default(false)
+  listedInLibrary Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deck            Deck?
+  quiz            Quiz?
+  note            Note?
+
+  @@index([ownerId, folderId])
+}
+
+model Deck {
+  id         String   @id @default(cuid())
+  materialId String   @unique
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  cards      Card[]
+}
+
+model Card {
+  id           String    @id @default(cuid())
+  deckId       String
+  deck         Deck      @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  front        Json
+  back         Json
+  position     Int
+  easeFactor   Float     @default(2.5)
+  repetitions  Int       @default(0)
+  intervalDays Int       @default(0)
+  dueAt        DateTime  @default(now())
+  lapses       Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  attempts     Attempt[]
+
+  @@index([deckId, position])
+  @@index([dueAt])
+}
+
+model Quiz {
+  id         String     @id @default(cuid())
+  materialId String     @unique
+  material   Material   @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  questions  Question[]
+}
+
+model Question {
+  id           String    @id @default(cuid())
+  quizId       String
+  quiz         Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  type         String
+  stem         Json
+  position     Int
+  easeFactor   Float     @default(2.5)
+  repetitions  Int       @default(0)
+  intervalDays Int       @default(0)
+  dueAt        DateTime  @default(now())
+  lapses       Int       @default(0)
+  createdAt    DateTime  @default(now())
+  options      Option[]
+  attempts     Attempt[]
+
+  @@index([quizId, position])
+  @@index([dueAt])
+}
+
+model Option {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  content    Json
+  correct    Boolean
+  position   Int
+
+  @@index([questionId, position])
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  materialId String   @unique
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  document   Json
+}
+
+model StudySession {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode       String
+  plan       Json
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+  attempts   Attempt[]
+
+  @@index([userId])
+}
+
+model Attempt {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studySessionId String?
+  studySession   StudySession? @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
+  cardId         String?
+  card           Card?         @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  questionId     String?
+  question       Question?     @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  outcome        String
+  createdAt      DateTime      @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ImageAsset {
+  id        String   @id
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  mime      String
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+model QuizDraft {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderId  String?
+  title     String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Připraveno na pozdější skupiny. První verze zapisuje jen principalType USER a roli OWNER.
+model AccessGrant {
+  id            String   @id @default(cuid())
+  principalType String
+  principalId   String
+  resourceType  String
+  resourceId    String
+  role          String
+  createdAt     DateTime @default(now())
+
+  @@unique([principalType, principalId, resourceType, resourceId])
+  @@index([resourceType, resourceId])
+}
