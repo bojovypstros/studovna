@@ -11,6 +11,11 @@ test("registrace, sada, procvičení, statistiky, sdílení a mobilní menu", as
   await expect(page.locator("main input")).toHaveCount(0);
   await page.getByRole("link", { name: "Pokračovat do studovny" }).click();
   await expect(page.getByRole("heading", { name: "Studovna" })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expectFormSeparated(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectFormSeparated(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   await page.getByLabel("Nová složka").fill("Fyzika");
   await page.getByRole("button", { name: "Vytvořit složku" }).click();
@@ -73,6 +78,20 @@ test("registrace, sada, procvičení, statistiky, sdílení a mobilní menu", as
   await page.getByRole("button", { name: "Menu" }).click();
   await expect(page.getByRole("link", { name: "Statistiky" })).toBeVisible();
 });
+
+async function expectFormSeparated(page: import("@playwright/test").Page) {
+  const name = await page.getByLabel("Nový materiál").boundingBox();
+  const type = await page.getByRole("group", { name: "Typ" }).boundingBox();
+  const submit = await page.getByRole("button", { name: "Vytvořit materiál" }).boundingBox();
+  expect(name && type && submit).toBeTruthy();
+  expect(overlaps(name!, type!)).toBe(false);
+  expect(overlaps(submit!, type!)).toBe(false);
+  expect(overlaps(name!, submit!)).toBe(false);
+}
+
+function overlaps(a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
 
 async function guestPageWait(browser: import("@playwright/test").Browser, href: string) {
   const guest = await browser.newContext();

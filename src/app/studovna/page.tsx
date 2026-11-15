@@ -128,7 +128,7 @@ export default async function LibraryPage({
             </li>
           ))}
         </ul>
-        <form action={createMaterialAction} className="inline-actions">
+        <form action={createMaterialAction} className="material-form">
           {current ? <input type="hidden" name="slozka" value={current.id} /> : null}
           <div className="field">
             <label htmlFor="novy-material">Nový materiál</label>

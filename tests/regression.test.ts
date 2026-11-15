@@ -7,9 +7,17 @@ import { mailFrom, sendMail } from "../src/lib/mail";
 import { emailError, passwordError } from "../src/lib/password";
 import { draftsFromCards, answerMatches, questionError } from "../src/lib/quiz";
 import { parentCreatesCycle, rankItems } from "../src/lib/recommend";
+import { formatWhen } from "../src/lib/format";
 import { applySm2, initialSm2 } from "../src/lib/sm2";
 
 const now = new Date("2026-11-14T12:00:00.000Z");
+
+describe("časy relací", () => {
+  it("ukazuje Europe/Prague, včetně letního času", () => {
+    expect(formatWhen(new Date("2026-01-15T23:30:00.000Z"))).toBe("16. 1. 2026 0:30");
+    expect(formatWhen(new Date("2026-07-15T22:30:00.000Z"))).toBe("16. 7. 2026 0:30");
+  });
+});
 
 describe("SM-2", () => {
   it("maps Nevím to an immediate reset and a lower ease", () => {
